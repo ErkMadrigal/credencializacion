@@ -62,7 +62,7 @@ app.post('/upload', upload.single('xlsxFile'), (req, res) => {
   const outputDocxPath = path.join(__dirname, 'output', `credenciales_${scriptType}.docx`);
 
   // Ejecutar tu script lauimir.js exactamente como está
-  exec(`node lauimir.js "${inputPath}"`, (error, stdout, stderr) => {
+  exec(`node ${scriptType}.js "${inputPath}"`, (error, stdout, stderr) => {
     if (error) {
       console.error(`Error: ${error.message}`);
       return res.status(500).send('Error al procesar el archivo');
@@ -121,7 +121,5 @@ app.get('/download-photo', (req, res) => {
 // Iniciar servidor
 app.listen(port, () => {
   console.log(`Servidor corriendo en http://localhost:${port}`);
-  console.log(`Asegúrate de tener estos archivos en su lugar:`);
-  console.log(`- plantillas/Credenciales_Laumir.svg`);
-  console.log(`- foto.png`);
+  
 });

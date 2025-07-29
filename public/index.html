@@ -40,6 +40,9 @@
       padding: 20px;
       cursor: pointer;
       transition: transform 0.3s, box-shadow 0.3s;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
     }
     
     .card:hover {
@@ -49,17 +52,32 @@
     
     .card h2 {
       color: #3498db;
-      margin-top: 0;
+      margin-top: 15px;
+      margin-bottom: 10px;
     }
     
     .card p {
       color: #7f8c8d;
+      margin-top: 0;
     }
     
     .card-icon {
-      font-size: 50px;
-      margin-bottom: 15px;
-      color: #3498db;
+      width: 120px;
+      height: 120px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 10px;
+      overflow: hidden;
+      border-radius: 8px;
+      background-color: #f8f9fa;
+    }
+    
+    .card-icon img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      object-position: center;
     }
     
     #uploadForm {
@@ -113,19 +131,19 @@
     
     <div class="cards-container">
       <div class="card" id="laumirCard">
-        <div class="card-icon">🪪</div>
+        <div class="card-icon"><img src="assets/laumir.png" alt="Laumir" onerror="this.src='assets/placeholder.png'"></div>
         <h2>Credenciales Laumir</h2>
         <p>Genera credenciales con diseño Laumir a partir de archivo Excel</p>
       </div>
       
       <div class="card" id="serprosepCard">
-        <div class="card-icon">🏢</div>
+        <div class="card-icon"><img src="assets/logoSerprosep.png" alt="Serprosep" onerror="this.src='assets/placeholder.png'"></div>
         <h2>Credenciales Serprosep</h2>
         <p>Genera credenciales con diseño Serprosep a partir de archivo Excel</p>
       </div>
       
       <div class="card" id="armorKingCard">
-        <div class="card-icon">🛡️</div>
+        <div class="card-icon"><img src="assets/logoArmourKing.png" alt="ArmorKing" onerror="this.src='assets/placeholder.png'"></div>
         <h2>Credenciales ArmorKing</h2>
         <p>Genera credenciales con diseño ArmorKing a partir de archivo Excel</p>
       </div>
@@ -216,6 +234,19 @@
       } catch (error) {
         statusDiv.textContent = `Error: ${error.message}`;
       }
+    });
+
+    // Precargar imágenes para evitar flashes al hacer hover
+    window.addEventListener('load', () => {
+      const images = [
+        'assets/laumir.webp',
+        'assets/logoSerprosep.png',
+        'assets/logoArmourKing.png'
+      ];
+      
+      images.forEach(src => {
+        new Image().src = src;
+      });
     });
   </script>
 </body>
