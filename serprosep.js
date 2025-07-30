@@ -38,7 +38,6 @@ if (!fs.existsSync(svgPath)) {
   console.error(`❌ No se encontró la plantilla SVG en: ${svgPath}`);
   process.exit(1);
 }
-
 // Leer el archivo Excel con la estructura específica
 const workbook = XLSX.readFile(excelPath);
 const sheetName = workbook.SheetNames[0];

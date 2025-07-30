@@ -28,27 +28,28 @@ const svgPath = path.resolve(__dirname, 'plantillas/Credenciales_Laumir.svg');
 const outputDir = path.resolve(__dirname, 'output');
 const outputDocxPath = path.resolve(outputDir, 'credenciales_generadas.docx');
 
-console.log('Ruta absoluta de salida DOCX:', outputDocxPath);
-console.log('Directorio de salida existe?', fs.existsSync(outputDir));
-console.log('Permisos de escritura?', fs.accessSync(outputDir, fs.constants.W_OK));
-
+// Verificación de archivos y directorios
 if (!fs.existsSync(outputDir)) {
   fs.mkdirSync(outputDir);
   console.log('📁 Carpeta output creada:', outputDir);
 }
 
-// Verificación de archivos necesarios
 if (!fs.existsSync(svgPath)) {
   console.error(`❌ No se encontró la plantilla SVG en: ${svgPath}`);
   process.exit(1);
 }
-
+// Leer el archivo Excel con la estructura específica
 const workbook = XLSX.readFile(excelPath);
 const sheetName = workbook.SheetNames[0];
 const worksheet = workbook.Sheets[sheetName];
+
+// Convertir a JSON con los nombres de columna específicos
 const excelData = XLSX.utils.sheet_to_json(worksheet, {
-  header: ['puesto', 'curp', 'telefono', 'tipo_sangre', 'alergia', 'fecha_expedicion', 'fecha_vigencia', 'familiar', 'parentesco', 'telefono_parentesco', 'nombre_elemento', 'url_imagen']
+  header: ['puesto', 'curp', 'telefono', 'tipo_sangre', 'alergia', 'fecha_expedicion', 'fecha_vigencia', 'familiar', 'parentesco', 'telefono_parentesco', 'nombre_elemento', 'url_imagen'],
+  defval: "" // Valor por defecto para celdas vacías
 }).slice(1); // Saltar encabezado
+
+console.log('Datos del Excel:', excelData);
 
 async function downloadImage(url, outputPath) {
   try {
@@ -73,26 +74,40 @@ async function generateCredential(row, index) {
   const $ = cheerio.load(svgContent, { xmlMode: true });
   $('svg').attr('xmlns:xlink', 'http://www.w3.org/1999/xlink');
 
-  // Procesar campos de texto
-  for (const key in row) {
-    if (key !== 'url_imagen') { // Saltar el campo de la URL de la imagen
-      const tspan = $(`#${key}`).find('tspan');
-      if (tspan.length) {
-        if (key === 'fecha_expedicion' || key === 'fecha_vigencia') {
-          const excelDate = parseFloat(row[key]);
-          if (!isNaN(excelDate)) {
-            const date = XLSX.SSF.parse_date_code(excelDate);
-            const formattedDate = `${date.d.toString().padStart(2, '0')}/${date.m.toString().padStart(2, '0')}/${date.y}`;
-            tspan.text(formattedDate);
-          } else {
-            tspan.text(row[key]);
-          }
+  // Mapeo de campos del Excel a IDs en el SVG
+  const fieldMapping = {
+    'text1': row.puesto,
+    'text2': row.curp,
+    'text3': row.telefono,
+    'text4': row.tipo_sangre,
+    'text5': row.alergia,
+    'text6': row.fecha_expedicion,
+    'text7': row.fecha_vigencia,
+    'text8': row.familiar,
+    'text9': row.parentesco,
+    'text10': row.telefono_parentesco,
+    'text11': row.nombre_elemento
+  };
+
+  // Insertar datos en el SVG
+  for (const [fieldId, fieldValue] of Object.entries(fieldMapping)) {
+    const tspan = $(`#${fieldId}`).find('tspan');
+    if (tspan.length) {
+      // Procesamiento especial para fechas
+      if (fieldId === 'text6' || fieldId === 'text7') {
+        const excelDate = parseFloat(fieldValue);
+        if (!isNaN(excelDate)) {
+          const date = XLSX.SSF.parse_date_code(excelDate);
+          const formattedDate = `${date.d.toString().padStart(2, '0')}/${date.m.toString().padStart(2, '0')}/${date.y}`;
+          tspan.text(formattedDate);
         } else {
-          tspan.text(row[key]);
+          tspan.text(fieldValue);
         }
       } else {
-        console.warn(`⚠️ No se encontró elemento con ID: ${key}`);
+        tspan.text(fieldValue);
       }
+    } else {
+      console.warn(`⚠️ No se encontró elemento con ID: ${fieldId}`);
     }
   }
 
