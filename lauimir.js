@@ -3,6 +3,7 @@ const cheerio = require('cheerio');
 const sharp = require('sharp');
 const XLSX = require('xlsx');
 const path = require('path');
+const axios = require('axios');
 const {
   Document,
   Packer,
@@ -23,11 +24,7 @@ if (!excelPath) {
   process.exit(1);
 }
 
-// Añade al inicio del script
-
-
 const svgPath = path.resolve(__dirname, 'plantillas/Credenciales_Laumir.svg');
-const imagePath = path.resolve(__dirname, 'foto.png');
 const outputDir = path.resolve(__dirname, 'output');
 const outputDocxPath = path.resolve(outputDir, 'credenciales_generadas.docx');
 
@@ -46,91 +43,128 @@ if (!fs.existsSync(svgPath)) {
   process.exit(1);
 }
 
-if (!fs.existsSync(imagePath)) {
-  console.error(`❌ No se encontró la imagen en: ${imagePath}`);
-  process.exit(1);
-}
-
 const workbook = XLSX.readFile(excelPath);
 const sheetName = workbook.SheetNames[0];
 const worksheet = workbook.Sheets[sheetName];
 const excelData = XLSX.utils.sheet_to_json(worksheet, {
-  header: ['text1', 'text2', 'text3', 'text4', 'text5', 'text6', 'text7', 'text8', 'text9', 'text10', 'text11']
+  header: ['puesto', 'curp', 'telefono', 'tipo_sangre', 'alergia', 'fecha_expedicion', 'fecha_vigencia', 'familiar', 'parentesco', 'telefono_parentesco', 'nombre_elemento', 'url_imagen']
 }).slice(1); // Saltar encabezado
+
+async function downloadImage(url, outputPath) {
+  try {
+    const response = await axios({
+      method: 'get',
+      url: url,
+      responseType: 'arraybuffer'
+    });
+    fs.writeFileSync(outputPath, response.data);
+    console.log(`✅ Imagen descargada: ${outputPath}`);
+    return outputPath;
+  } catch (error) {
+    console.error(`❌ Error al descargar imagen desde ${url}:`, error.message);
+    throw error;
+  }
+}
 
 async function generateCredential(row, index) {
   console.log(`\n🔄 Generando credencial ${index + 1}`);
 
   const svgContent = fs.readFileSync(svgPath, 'utf8');
-  const imageBase64 = fs.readFileSync(imagePath).toString('base64');
-  const imageMimeType = 'image/png';
-
   const $ = cheerio.load(svgContent, { xmlMode: true });
   $('svg').attr('xmlns:xlink', 'http://www.w3.org/1999/xlink');
 
+  // Procesar campos de texto
   for (const key in row) {
-    const tspan = $(`#${key}`).find('tspan');
-    if (tspan.length) {
-      if (key === 'text6' || key === 'text7') {
-        const excelDate = parseFloat(row[key]);
-        if (!isNaN(excelDate)) {
-          const date = XLSX.SSF.parse_date_code(excelDate);
-          const formattedDate = `${date.d.toString().padStart(2, '0')}/${date.m.toString().padStart(2, '0')}/${date.y}`;
-          tspan.text(formattedDate);
+    if (key !== 'url_imagen') { // Saltar el campo de la URL de la imagen
+      const tspan = $(`#${key}`).find('tspan');
+      if (tspan.length) {
+        if (key === 'fecha_expedicion' || key === 'fecha_vigencia') {
+          const excelDate = parseFloat(row[key]);
+          if (!isNaN(excelDate)) {
+            const date = XLSX.SSF.parse_date_code(excelDate);
+            const formattedDate = `${date.d.toString().padStart(2, '0')}/${date.m.toString().padStart(2, '0')}/${date.y}`;
+            tspan.text(formattedDate);
+          } else {
+            tspan.text(row[key]);
+          }
         } else {
           tspan.text(row[key]);
         }
       } else {
-        tspan.text(row[key]);
+        console.warn(`⚠️ No se encontró elemento con ID: ${key}`);
       }
-    } else {
-      console.warn(`⚠️ No se encontró elemento con ID: ${key}`);
     }
   }
 
-  const rect = $('#rect11');
-  if (rect.length) {
-    const x = rect.attr('x');
-    const y = rect.attr('y');
-    const width = rect.attr('width');
-    const height = rect.attr('height');
-
-    const imageTag = `
-      <image
-        id="img1"
-        x="${x}"
-        y="${y}"
-        width="${width}"
-        height="${height}"
-        xlink:href="data:${imageMimeType};base64,${imageBase64}" />
-    `;
-    rect.replaceWith(imageTag);
-    console.log(`✅ Imagen insertada para credencial ${index + 1}`);
-  } else {
-    console.warn('⚠️ No se encontró <rect id="rect11">');
+  // Procesar imagen desde URL
+  const imageUrl = row.url_imagen;
+  if (!imageUrl) {
+    console.warn('⚠️ No se proporcionó URL de imagen para esta credencial');
+    return null;
   }
 
-  const outputSvgPath = path.join(outputDir, `credencial_${index + 1}.svg`);
-  const nuevoSvg = $.xml();
-  fs.chmodSync(outputDir, 0o777);
-  fs.writeFileSync(outputSvgPath, nuevoSvg);
-  console.log(`✅ SVG guardado: ${outputSvgPath}`);
+  try {
+    // Descargar la imagen temporalmente
+    const tempImagePath = path.join(outputDir, `temp_image_${index}.jpg`);
+    await downloadImage(imageUrl, tempImagePath);
+    
+    // Convertir la imagen a base64
+    const imageBase64 = fs.readFileSync(tempImagePath).toString('base64');
+    const imageMimeType = 'image/jpeg'; // Asumimos que es JPEG, podrías detectar el tipo real
 
-  console.log('Verifica archivo en:', outputDocxPath);
-console.log('¿Existe el archivo? ', fs.existsSync(outputDocxPath));
+    const rect = $('#rect11');
+    if (rect.length) {
+      const x = rect.attr('x');
+      const y = rect.attr('y');
+      const width = rect.attr('width');
+      const height = rect.attr('height');
 
-  const outputPngPath = path.join(outputDir, `credencial_${index + 1}.png`);
-  await sharp(Buffer.from(nuevoSvg))
-    .png()
-    .resize({ width: 1400, height: 1000 })
-    .toFile(outputPngPath);
-  console.log(`✅ PNG generado: ${outputPngPath}`);
+      const imageTag = `
+        <image
+          id="img1"
+          x="${x}"
+          y="${y}"
+          width="${width}"
+          height="${height}"
+          xlink:href="data:${imageMimeType};base64,${imageBase64}" />
+      `;
+      rect.replaceWith(imageTag);
+      console.log(`✅ Imagen insertada para credencial ${index + 1}`);
+    } else {
+      console.warn('⚠️ No se encontró <rect id="rect11">');
+    }
 
-  return outputPngPath;
+    // Eliminar la imagen temporal
+    fs.unlinkSync(tempImagePath);
+
+    const outputSvgPath = path.join(outputDir, `credencial_${index + 1}.svg`);
+    const nuevoSvg = $.xml();
+    fs.writeFileSync(outputSvgPath, nuevoSvg);
+    console.log(`✅ SVG guardado: ${outputSvgPath}`);
+
+    const outputPngPath = path.join(outputDir, `credencial_${index + 1}.png`);
+    await sharp(Buffer.from(nuevoSvg))
+      .png()
+      .resize({ width: 1400, height: 1000 })
+      .toFile(outputPngPath);
+    console.log(`✅ PNG generado: ${outputPngPath}`);
+
+    return outputPngPath;
+  } catch (error) {
+    console.error(`❌ Error al procesar imagen para credencial ${index + 1}:`, error);
+    return null;
+  }
 }
 
 async function createDocWithCredentials(pngPaths) {
   console.log('🟢 Creando documento Word con las credenciales...');
+
+  // Filtrar paths nulos (credenciales fallidas)
+  const validPaths = pngPaths.filter(path => path !== null);
+  if (validPaths.length === 0) {
+    console.error('❌ No hay credenciales válidas para generar el documento');
+    return;
+  }
 
   const doc = new Document({
     sections: [{
@@ -142,11 +176,11 @@ async function createDocWithCredentials(pngPaths) {
       },
       children: [
         new Table({
-          rows: Array.from({ length: Math.ceil(pngPaths.length / 2) }, (_, rowIndex) => {
+          rows: Array.from({ length: Math.ceil(validPaths.length / 2) }, (_, rowIndex) => {
             const cells = [];
 
-            if (pngPaths[rowIndex * 2]) {
-              const imageBuffer = fs.readFileSync(pngPaths[rowIndex * 2]);
+            if (validPaths[rowIndex * 2]) {
+              const imageBuffer = fs.readFileSync(validPaths[rowIndex * 2]);
               cells.push(new TableCell({
                 children: [new Paragraph({
                   children: [new ImageRun({
@@ -165,8 +199,8 @@ async function createDocWithCredentials(pngPaths) {
               }));
             }
 
-            if (pngPaths[rowIndex * 2 + 1]) {
-              const imageBuffer = fs.readFileSync(pngPaths[rowIndex * 2 + 1]);
+            if (validPaths[rowIndex * 2 + 1]) {
+              const imageBuffer = fs.readFileSync(validPaths[rowIndex * 2 + 1]);
               cells.push(new TableCell({
                 children: [new Paragraph({
                   children: [new ImageRun({
@@ -209,10 +243,6 @@ async function createDocWithCredentials(pngPaths) {
   try {
     const buffer = await Packer.toBuffer(doc);
     fs.writeFileSync(outputDocxPath, buffer);
-    console.log('🧪 Verificando si el archivo .docx fue realmente escrito...');
-    console.log('📄 ¿Existe?', fs.existsSync(outputDocxPath));
-    console.log('📁 Path actual (cwd):', process.cwd());
-    console.log('__dirname:', __dirname);
     console.log(`✅ Documento Word creado correctamente en: ${outputDocxPath}`);
   } catch (error) {
     console.error('❌ Error al crear el documento Word:', error);
@@ -225,7 +255,9 @@ async function main() {
     const pngPaths = [];
     for (let i = 0; i < excelData.length; i++) {
       const pngPath = await generateCredential(excelData[i], i);
-      pngPaths.push(pngPath);
+      if (pngPath) {
+        pngPaths.push(pngPath);
+      }
     }
     await createDocWithCredentials(pngPaths);
     console.log('✅ Proceso completado.');
