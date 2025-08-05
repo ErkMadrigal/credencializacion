@@ -1,1 +1,22 @@
-node_modules/
+# Dependencias
+/node_modules/
+
+# Builds
+/dist/
+/out/
+/release/
+/app/
+
+# Configuraciones
+.env
+.env.local
+.electron-builder/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Editor
+.vscode/
+.idea/

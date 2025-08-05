@@ -1,0 +1,52 @@
+# 🔖 Credencialización - Aplicación Desktop
+
+![Electron](https://img.shields.io/badge/Electron-2C2E3B?style=for-the-badge&logo=electron)
+![Node.js](https://img.shields.io/badge/Node.js-43853D?style=for-the-badge&logo=node.js&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white)
+
+Aplicación de gestión de credenciales multiplataforma construida con Electron, React y TypeScript.
+
+## 📦 Requisitos del Sistema
+
+| Componente    | Requisito Mínimo       | Recomendado          |
+|--------------|-----------------------|---------------------|
+| Sistema      | Windows 10 / macOS 10.13 / Ubuntu 18.04 | Windows 11 / macOS 12 / Ubuntu 20.04 |
+| Node.js      | v16.x                 | v18.x LTS           |
+| npm          | v8.x                  | v9.x                |
+| Espacio      | 500 MB libre          | 1 GB libre          |
+
+## 🚀 Instalación Rápida
+
+1. **Clonar repositorio**:
+   ```bash
+   git clone https://github.com/tuusuario/credencializacion.git
+   cd credencializacion
+   
+2. **Instalar dependencias**:
+   ```bash
+   npm install
+   
+3. **Configurar entorno (Windows):**:
+   ```bash
+    npm install --global windows-build-tools --vs2015
+
+    npx electron-rebuild
+
+## Build Multiplataforma
+    ```bash
+    npm run build -- --win --mac --linux --x64 --arm64
+
+    npm run build -- --win nsis-web --mac dmg --linux AppImage
+
+## Solución de Problemas ⚠️
+    ```bash 
+    npm rebuild --runtime=electron --target=<electron_version> --disturl=https://electronjs.org/headers --abi=<abi_version>
+
+    :: Limpiar cachés de Electron
+    rmdir /s /q "%LOCALAPPDATA%/electron-builder"
+    rmdir /s /q "%USERPROFILE%/.npm/_cacache"
+
+    :: Reinstalar dependencias
+    del /s /q node_modules
+    del package-lock.json
+    npm install
