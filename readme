@@ -50,3 +50,7 @@ Aplicación de gestión de credenciales multiplataforma construida con Electron,
     del /s /q node_modules
     del package-lock.json
     npm install
+
+## correr el programa desde la terminal 
+   ```bash
+   npm run start
