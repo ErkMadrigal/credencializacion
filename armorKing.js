@@ -26,7 +26,7 @@ if (!excelPath) {
   process.exit(1);
 }
 
-const svgPath = path.resolve(__dirname, 'plantillas/Credencial_serprosep.svg');
+const svgPath = path.resolve(__dirname, 'plantillas/Credenciales_ArmourKing.svg');
 const outputDir = path.resolve(__dirname, 'output');
 const outputDocxPath = path.resolve(outputDir, 'credenciales_generadas.docx');
 
@@ -47,7 +47,7 @@ const worksheet = workbook.Sheets[sheetName];
 
 // Convertir a JSON con los nombres de columna específicos
 const excelData = XLSX.utils.sheet_to_json(worksheet, {
-  header: ['puesto', 'curp', 'telefono', 'tipo_sangre', 'alergia', 'fecha_expedicion', 'fecha_vigencia', 'familiar', 'parentesco', 'telefono_parentesco', 'nombre_elemento', 'url_imagen'],
+  header: ['puesto', 'curp', 'telefono', 'tipo_sangre', 'alergia', 'fecha_expedicion', 'fecha_vigencia', 'familiar', 'parentesco', 'telefono_parentesco', 'nombre_elemento', 'url_imagen', 'numEmpleado'],
   defval: "" // Valor por defecto para celdas vacías
 }).slice(1); // Saltar encabezado
 
@@ -103,7 +103,8 @@ async function generateCredential(row, index) {
     'text8': row.familiar,
     'text9': row.parentesco,
     'text10': row.telefono_parentesco,
-    'text11': row.nombre_elemento
+    'text11': row.nombre_elemento,
+    'text12': row.numEmpleado
   };
 
   // Insertar datos en el SVG

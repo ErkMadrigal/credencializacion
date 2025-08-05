@@ -16,6 +16,8 @@ const {
   ImageRun,
   BorderStyle,
 } = require('docx');
+const { promisify } = require('util');
+const copyFileAsync = promisify(fs.copyFile);
 
 // Argumento Excel
 const excelPath = process.argv[2];
@@ -53,16 +55,31 @@ console.log('Datos del Excel:', excelData);
 
 async function downloadImage(url, outputPath) {
   try {
-    const response = await axios({
-      method: 'get',
-      url: url,
-      responseType: 'arraybuffer'
-    });
-    fs.writeFileSync(outputPath, response.data);
-    console.log(`✅ Imagen descargada: ${outputPath}`);
-    return outputPath;
+    if (url.startsWith('file://')) {
+      // Manejar ruta local
+      const localPath = url.replace('file:///', '').replace('file://', '');
+      if (!fs.existsSync(localPath)) {
+        throw new Error(`No se encontró la imagen en la ruta local: ${localPath}`);
+      }
+      // Copiar la imagen al directorio de salida
+      await copyFileAsync(localPath, outputPath);
+      console.log(`✅ Imagen copiada desde ruta local: ${outputPath}`);
+      return outputPath;
+    } else if (url.startsWith('http://') || url.startsWith('https://')) {
+      // Manejar URL remota
+      const response = await axios({
+        method: 'get',
+        url: url,
+        responseType: 'arraybuffer'
+      });
+      fs.writeFileSync(outputPath, response.data);
+      console.log(`✅ Imagen descargada desde URL: ${outputPath}`);
+      return outputPath;
+    } else {
+      throw new Error(`Formato de URL no soportado: ${url}`);
+    }
   } catch (error) {
-    console.error(`❌ Error al descargar imagen desde ${url}:`, error.message);
+    console.error(`❌ Error al procesar imagen desde ${url}:`, error.message);
     throw error;
   }
 }
